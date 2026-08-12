@@ -1,0 +1,30 @@
+name: g4-internal-endpoints
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: single-hit internal endpoints
+        run: |
+          probe() {
+            u="$1"; out=$(mktemp)
+            code=$(curl -sS -m 20 -o "$out" -w "%{http_code}" "$u" 2>/dev/null || echo ERR)
+            echo "== URL: $u"
+            echo "HTTP=$code"
+            head -c 300 "$out"
+            echo
+            echo "----"
+            rm -f "$out"
+          }
+          probe "https://pipelines.actions.githubusercontent.com/"
+          probe "https://pipelines.actions.githubusercontent.com/Darkeydel/gh-bounty-test-1/$GITHUB_RUN_ID/pipeline"
+          probe "https://pipelines.actions.githubusercontent.com/$GITHUB_REPOSITORY_ID/$GITHUB_RUN_ID/pipeline"
+          probe "https://results-receiver.actions.githubusercontent.com/"
+          probe "https://vstoken.actions.githubusercontent.com/_apis/distributedtask/pools?api-version=5.1-preview.1"
+          probe "https://vstoken.actions.githubusercontent.com/_apis/distributedtask/agentgroups?api-version=5.1-preview.1"
+          probe "https://codeload.github.com/Darkeydel/gh-bounty-test-1/tar.gz/main"

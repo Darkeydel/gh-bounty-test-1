@@ -1,0 +1,57 @@
+name: g4-oidc
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  oidc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: fetch oidc token (custom aud + default)
+        run: |
+          curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=github-bounty-probe-aud" -o /tmp/oidc-custom.json
+          curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" -o /tmp/oidc-default.json
+          python3 - <<'EOF'
+          import json,base64
+          for name,f in [('custom-aud','/tmp/oidc-custom.json'),('default-aud','/tmp/oidc-default.json')]:
+              try:
+                  obj=json.load(open(f))
+                  if 'value' not in obj:
+                      print(name,'RAW:',open(f).read()[:400]); continue
+                  tok=obj['value']
+              except Exception as e:
+                  print(name,'ERROR',repr(e),open(f).read()[:400]); continue
+              h,p,s=tok.split('.')
+              p+='='*(-len(p)%4); h+='='*(-len(h)%4)
+              hdr=json.loads(base64.urlsafe_b64decode(h))
+              cl=json.loads(base64.urlsafe_b64decode(p))
+              keep={k:cl[k] for k in ['iss','sub','aud','exp','nbf','iat','jti','ref','sha','repository','repository_owner','repository_owner_id','run_id','run_number','runner_environment','job_workflow_ref','actor','actor_id','workflow','workflow_ref'] if k in cl}
+              print(json.dumps({'variant':name,'header':hdr,'claims':keep}, sort_keys=True))
+          EOF
+          echo "== token exchange response headers =="
+          curl -sSI -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=github-bounty-probe-aud" | grep -iE '^(HTTP|content-type|cache-control|date)'
+      - name: dump claims to artifact
+        run: |
+          curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=github-bounty-probe-aud" -o /tmp/oidc-custom.json
+          python3 - <<'EOF'
+          import json,base64
+          tok=json.load(open('/tmp/oidc-custom.json'))['value']
+          h,p,s=tok.split('.')
+          p+='='*(-len(p)%4)
+          cl=json.loads(base64.urlsafe_b64decode(p))
+          print('subject:',cl.get('sub'))
+          print('issuer:',cl.get('iss'))
+          print('repository:',cl.get('repository'))
+          print('aud:',cl.get('aud'))
+          print('job_workflow_ref:',cl.get('job_workflow_ref'))
+          print('ref:',cl.get('ref'))
+          open('/tmp/oidc-claims.txt','w').write(json.dumps(cl,sort_keys=True,indent=1))
+          EOF
+      - name: upload claims
+        uses: actions/upload-artifact@v4
+        with:
+          name: g4-oidc-claims
+          path: /tmp/oidc-claims.txt

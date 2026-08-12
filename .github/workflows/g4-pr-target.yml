@@ -1,0 +1,34 @@
+name: g4-pr-target
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  prprobe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: dump PR metadata
+        run: |
+          E=/tmp/pr.txt
+          {
+            echo "event name: $GITHUB_EVENT_NAME"
+            echo "base repo: $GITHUB_REPOSITORY"
+            echo "head repo full_name: ${{ github.event.pull_request.head.repo.full_name }}"
+            echo "head ref: ${{ github.event.pull_request.head.ref }}"
+            echo "base ref: ${{ github.event.pull_request.base.ref }}"
+            echo "PR number: ${{ github.event.pull_request.number }}"
+            echo "actor: ${{ github.actor }}"
+            echo "title (quoted-safe): ${{ github.event.pull_request.title }}"
+            echo "title_UNQUOTED_INJECTION_PROBE:"
+            echo ${{ github.event.pull_request.title }}
+          } >> "$E"
+          cat "$E"
+          cp "$E" /tmp/pr-evidence.txt
+      - name: upload PR evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: g4-pr-target-evidence
+          path: /tmp/pr-evidence.txt
