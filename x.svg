@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="400" height="400">
-  <script type="text/javascript">alert(document.domain)</script>
-  <rect width="400" height="400" fill="#ff0000" onload="alert(2)"/>
+  <script type="text/javascript">document.title="G5-SVG-RAN-"+document.domain;try{document.body.setAttribute("data-g5ran","1")}catch(e){}</script>
+  <rect width="400" height="400" fill="#ff0000"/>
   <text x="10" y="20" font-size="14" fill="#000">G5-SVG-PROBE</text>
 </svg>
