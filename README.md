@@ -1,57 +1,64 @@
-# batch1 (sections 14-25)
+# batch2 (sections 26-40)
 
-## 14. data: URI
-<img src="data:text/html,<script>alert(14)</script>">
-<a href="data:text/html,<script>alert(15)</script>">data-href</a>
-
-
-## 15. encoded javascript
-<a href="&#106;avascript:alert(16)">encoded-js</a>
-<a href="java&#x73;cript:alert(17)">hex-js</a>
+## 26. table with background attr
+<table background="javascript:alert(32)"><tr><td>x</td></tr></table>
 
 
-## 16. markdown link with js URL
-[link](javascript:alert(18))
-[link](java%73cript:alert(19))
+## 27. base href
+<base href="https://evil.example/">
 
 
-## 17. xmp / noembed / template / plaintext
-<xmp><script>alert(20)</script></xmp>
-<noembed><script>alert(21)</script></noembed>
-<template><script>alert(22)</script></template>
-<plaintext><script>alert(23)</script></plaintext>
+## 28. link rel stylesheet
+<link rel="stylesheet" href="data:text/css,body{background:url(https://evil.example/)}">
 
 
-## 18. autolink / protocol relative
-<img src="//evil.example/x.png" onerror="alert(24)">
+## 29. meta refresh
+<meta http-equiv="refresh" content="0;url=https://evil.example/">
 
 
-## 19. markdown image with js in alt
-![x](x.png "title onerror=alert(25)")
+## 30. svg nested in markdown fence
+```html
+<img src=x onerror=alert(33)>
+```
 
 
-## 20. katex / mathjax injection
-$`onerror=alert(26)`$
+## 31. anchors with target and rel
+<a target="_blank" href="https://example.com">newtab</a>
 
 
-## 21. custom attribute smuggling
-<div data-x="&quot; onmouseover=&quot;alert(27)">y</div>
+## 32. img srcset
+<img srcset="x 1x, y 2x" onerror="alert(34)">
 
 
-## 22. nested markdown in html
-<div>
-**bold** <img src=x onerror=alert(28)>
-</div>
+## 33. picture/source
+<picture><source srcset="x" onerror="alert(35)"><img src=x onerror="alert(36)"></picture>
 
 
-## 23. br with js via entity munging
-<img src=x onerror=&#x61;lert(29)>
+## 34. audio / track
+<audio src=x onerror="alert(37)"></audio>
 
 
-## 24. input type=image src
-<input type="image" src="x" onerror="alert(30)">
+## 35. iframe with srcdoc entity-encoded
+<iframe srcdoc="&lt;script&gt;alert(38)&lt;/script&gt;"></iframe>
 
 
-## 25. marquee / blink
-<marquee onstart="alert(31)">x</marquee>
+## 36. division with xml namespace
+<div xmlns="http://www.w3.org/1999/xhtml" onmouseover="alert(39)">x</div>
 
+
+## 37. closed-style img with space in tag
+< img src=x onerror=alert(40)>
+
+
+## 38. backtick code block with html
+`<script>alert(41)</script>`
+
+
+## 39. reference link js
+[ref][1]
+
+[1]: javascript:alert(42)
+
+
+## 40. heading with js id anchor
+## <a id="x" href="javascript:alert(43)">head</a>
