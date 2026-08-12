@@ -1,5 +1,5 @@
 name: bounty-probe
-on:
+"on":
   workflow_dispatch:
     inputs:
       ref:
