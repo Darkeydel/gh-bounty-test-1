@@ -50,15 +50,15 @@ jobs:
             echo "=== 13. other user's private repo (expected 404) ==="
             curl -sS -o /dev/null -w "HTTP %{http_code}\n" -H "Authorization: Bearer $TOKEN" https://api.github.com/repos/someorg/doesnotexist
           } >> "$E" 2>&1
-          cp "$E" /tmp/evidence.txt
+          cp "$E" /tmp/evidence-final.txt
       - name: Summarize
         run: |
           echo "## g4-token-probe (public repo GITHUB_TOKEN boundary)" >> "$GITHUB_STEP_SUMMARY"
           echo '```text' >> "$GITHUB_STEP_SUMMARY"
-          sed -n '1,160p' /tmp/evidence.txt >> "$GITHUB_STEP_SUMMARY"
+          sed -n '1,160p' /tmp/evidence-final.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
       - name: Upload evidence
         uses: actions/upload-artifact@v4
         with:
           name: g4-token-probe-evidence
-          path: /tmp/evidence.txt
+          path: /tmp/evidence-final.txt
