@@ -23,7 +23,7 @@ jobs:
             curl -sS -H "Authorization: Bearer $TOKEN" https://api.github.com/user | head -c 600
             echo ""
             echo "=== 2. headers on GET /user (scopes/rate) ==="
-            curl -sSI -H "Authorization: Bearer $TOKEN" https://api.github.com/user | grep -iE '^(x-oauth-scopes|x-ratelimit|HTTP/)'
+            curl -sSI -H "Authorization: Bearer $TOKEN" https://api.github.com/user | grep -iE '^(x-oauth-scopes|x-ratelimit|HTTP/)' || echo "NO_MATCH"
             echo "=== 3. own PUBLIC repo read ==="
             curl -sS -o /dev/null -w "HTTP %{http_code}\n" -H "Authorization: Bearer $TOKEN" https://api.github.com/repos/Darkeydel/gh-bounty-test-1
             echo "=== 4. PRIVATE repo read (same owner) ==="
