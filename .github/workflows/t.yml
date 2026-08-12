@@ -1,12 +1,17 @@
 name: bounty-probe
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Probe ref'
+        required: false
+        default: 'main'
 
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Dump event context
+      - name: Dump event context (truncated)
         run: echo "${{ toJson(github) }}" | head -c 2000
       - name: Print payload ref
-        run: echo "payload ref"
+        run: echo "payload ref: ${{ github.event.inputs.ref }}"
