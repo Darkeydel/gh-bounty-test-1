@@ -12,6 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Dump event context (truncated)
-        run: 'echo "${{ toJson(github) }}" | head -c 2000'
+        run: 'cat "$GITHUB_EVENT_PATH" | head -c 2000'
       - name: Print payload ref
         run: 'echo "payload ref: ${{ github.event.inputs.ref }}"'
