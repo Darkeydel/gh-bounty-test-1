@@ -26,3 +26,6 @@
 
 ## c9 my pages html through camo
 ![pages-html](https://darkeydel.github.io/camo-target.html)
+
+## c10 html content-type upstream through camo
+![html-upstream](https://example.com/)
