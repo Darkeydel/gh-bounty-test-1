@@ -1,0 +1,35 @@
+name: p4-artifact-confusion
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  confuse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: attempt to download shared-name from a run that did NOT upload it
+        id: dl
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-name
+          path: /tmp/p4-confusion-dl
+      - name: record
+        if: always()
+        run: |
+          E=/tmp/p4-confusion-evidence.txt
+          : > "$E"
+          echo "this_run=$GITHUB_RUN_ID" | tee -a "$E"
+          echo "download_shared-name_status=${{ steps.dl.outcome }}" | tee -a "$E"
+          ls -la /tmp/p4-confusion-dl 2>/dev/null | tee -a "$E"
+          if ls /tmp/p4-confusion-dl/* >/dev/null 2>&1; then echo "CONTENT=$(cat /tmp/p4-confusion-dl/*)" | tee -a "$E"; else echo "NO_ARTIFACT_IN_OWN_RUN" | tee -a "$E"; fi
+          cp "$E" /tmp/p4-confusion-evidence-final.txt
+      - name: upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4-confusion-evidence
+          path: /tmp/p4-confusion-evidence-final.txt

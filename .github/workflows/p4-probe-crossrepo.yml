@@ -1,0 +1,51 @@
+name: p4-probe-crossrepo
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: probe restore of private-repo cache key (public repo)
+        id: r1
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/p4-private-marker.txt
+          key: box-cache-X
+      - name: probe restore via restore-keys prefix box-cache-
+        id: r2
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/p4-prefix-marker.txt
+          key: does-not-exist-anywhere
+          restore-keys: |
+            box-cache-
+      - name: probe hashFiles-derived key box-cache-hash
+        id: r3
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/p4-hash-marker.txt
+          key: box-cache-hash-${{ hashFiles('p4-hashfile.txt') }}
+      - name: report
+        run: |
+          E=/tmp/p4-crossrepo-evidence.txt
+          : > "$E"
+          echo "probe1 key=box-cache-X hit='${{ steps.r1.outputs.cache-hit }}' matched='${{ steps.r1.outputs.cache-matched-key }}'" | tee -a "$E"
+          if [ -f /tmp/p4-private-marker.txt ]; then echo "probe1 FILE=$(cat /tmp/p4-private-marker.txt)" | tee -a "$E"; else echo "probe1 NO_FILE" | tee -a "$E"; fi
+          echo "probe2 restore-keys=box-cache- hit='${{ steps.r2.outputs.cache-hit }}' matched='${{ steps.r2.outputs.cache-matched-key }}'" | tee -a "$E"
+          if [ -f /tmp/p4-prefix-marker.txt ]; then echo "probe2 FILE=$(cat /tmp/p4-prefix-marker.txt)" | tee -a "$E"; else echo "probe2 NO_FILE" | tee -a "$E"; fi
+          echo "probe3 key=box-cache-hash-${{ hashFiles('p4-hashfile.txt') }} hit='${{ steps.r3.outputs.cache-hit }}' matched='${{ steps.r3.outputs.cache-matched-key }}'" | tee -a "$E"
+          if [ -f /tmp/p4-hash-marker.txt ]; then echo "probe3 FILE=$(cat /tmp/p4-hash-marker.txt)" | tee -a "$E"; else echo "probe3 NO_FILE" | tee -a "$E"; fi
+          echo "=== cache list in this (public) repo ===" | tee -a "$E"
+          curl -sS -H "Authorization: Bearer ${{ github.token }}" "https://api.github.com/repos/Darkeydel/gh-bounty-test-1/actions/caches?per_page=20" | python3 -c 'import sys,json;d=json.load(sys.stdin);[print(a["id"],a["key"],a["ref"],a["size_in_bytes"],a["created_at"]) for a in d.get("actions_caches",[])]' | tee -a "$E"
+          cp "$E" /tmp/p4-crossrepo-evidence-final.txt
+      - name: upload cross-repo probe evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4-crossrepo-evidence
+          path: /tmp/p4-crossrepo-evidence-final.txt

@@ -1,0 +1,33 @@
+name: p4-seed-cache-public
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: create markers
+        run: |
+          echo "PUBLIC-TRUSTED-CACHE-${GITHUB_RUN_ID}" > /tmp/p4-main-marker.txt
+          echo "PUBLIC-TRUSTED-HASH-CACHE-${GITHUB_RUN_ID}" > /tmp/p4-hash-marker.txt
+          echo "hashfiles_value=${{ hashFiles('p4-hashfile.txt') }}"
+      - name: save cache main-cache-Y
+        uses: actions/cache/save@v6
+        with:
+          path: /tmp/p4-main-marker.txt
+          key: main-cache-Y
+      - name: save hash-scoped cache main-cache-hash
+        uses: actions/cache/save@v6
+        with:
+          path: /tmp/p4-hash-marker.txt
+          key: main-cache-hash-${{ hashFiles('p4-hashfile.txt') }}
+      - name: upload public artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4-public-artifact
+          path: /tmp/p4-main-marker.txt

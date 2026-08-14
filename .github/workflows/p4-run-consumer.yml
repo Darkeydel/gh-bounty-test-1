@@ -1,0 +1,43 @@
+name: p4-run-consumer
+on:
+  workflow_run:
+    workflows: [p4-pr-workflow]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  consume:
+    runs-on: ubuntu-latest
+    steps:
+      - name: identify triggering run
+        run: |
+          echo "consumer_workflow_run_id=${{ github.event.workflow_run.id }}"
+          echo "consumer_workflow_run_event=${{ github.event.workflow_run.event }}"
+          echo "consumer_workflow_run_head_repo=${{ github.event.workflow_run.head_repository.full_name }}"
+          echo "consumer_workflow_run_head_branch=${{ github.event.workflow_run.head_branch }}"
+      - name: download artifacts from the triggering (PR) run
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-artifact
+          path: /tmp/p4-consumer
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+      - name: record content + download direction
+        run: |
+          E=/tmp/p4-consumer-evidence.txt
+          : > "$E"
+          echo "PR artifact content received by TRUSTED workflow_run consumer:" | tee -a "$E"
+          cat /tmp/p4-consumer/* 2>/dev/null | tee -a "$E"
+          echo "" | tee -a "$E"
+          echo "consumer_repo=${{ github.repository }} consumer_ref=${{ github.ref }}" | tee -a "$E"
+          echo "=== try to download artifact that only exists in PR run (shared-name) ===" | tee -a "$E"
+          cp "$E" /tmp/p4-consumer-evidence-final.txt
+      - name: upload consumer evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4-run-consumer-evidence
+          path: /tmp/p4-consumer-evidence-final.txt
