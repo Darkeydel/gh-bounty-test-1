@@ -1,0 +1,43 @@
+name: p4-readback
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  readback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: restore main-cache-Y (original path/version)
+        id: r1
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/p4-main-marker.txt
+          key: main-cache-Y
+      - name: restore main-cache-hash (original path/version)
+        id: r2
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/p4-hash-marker.txt
+          key: main-cache-hash-${{ hashFiles('p4-hashfile.txt') }}
+      - name: report (poisoning read-back)
+        run: |
+          E=/tmp/p4-readback-evidence.txt
+          : > "$E"
+          echo "run=$GITHUB_RUN_ID ref=$GITHUB_REF" | tee -a "$E"
+          echo "r1 key=main-cache-Y hit='${{ steps.r1.outputs.cache-hit }}' matched='${{ steps.r1.outputs.cache-matched-key }}'" | tee -a "$E"
+          if [ -f /tmp/p4-main-marker.txt ]; then echo "r1 FILE=$(cat /tmp/p4-main-marker.txt)" | tee -a "$E"; else echo "r1 NO_FILE" | tee -a "$E"; fi
+          echo "r2 key=main-cache-hash-${{ hashFiles('p4-hashfile.txt') }} hit='${{ steps.r2.outputs.cache-hit }}' matched='${{ steps.r2.outputs.cache-matched-key }}'" | tee -a "$E"
+          if [ -f /tmp/p4-hash-marker.txt ]; then echo "r2 FILE=$(cat /tmp/p4-hash-marker.txt)" | tee -a "$E"; else echo "r2 NO_FILE" | tee -a "$E"; fi
+          echo "EXPECTED_IF_NOT_POISONED=PUBLIC-TRUSTED-CACHE-31786720572 / PUBLIC-TRUSTED-HASH-CACHE-31786720572" | tee -a "$E"
+          echo "=== cache list ===" | tee -a "$E"
+          curl -sS -H "Authorization: Bearer ${{ github.token }}" "https://api.github.com/repos/Darkeydel/gh-bounty-test-1/actions/caches?per_page=20" | python3 -c 'import sys,json;d=json.load(sys.stdin);[print(a["id"],a["key"],a["ref"],a["created_at"]) for a in d.get("actions_caches",[])]' | tee -a "$E"
+          cp "$E" /tmp/p4-readback-evidence-final.txt
+      - name: upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4-readback-evidence
+          path: /tmp/p4-readback-evidence-final.txt
