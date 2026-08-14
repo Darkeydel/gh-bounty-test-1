@@ -1,0 +1,69 @@
+name: g4-zip-slip
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  zipslip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: craft malicious zip with traversal entries
+        run: |
+          python3 - <<'EOF'
+          import zipfile, os
+          z = zipfile.ZipFile('/tmp/evil.zip', 'w', zipfile.ZIP_DEFLATED)
+          z.writestr('safe.txt', 'safe-content')
+          z.writestr('../escape-root.txt', 'ESCAPED_TO_HOME')
+          z.writestr('sub/../../escape-sub.txt', 'ESCAPED_VIA_SUB')
+          z.writestr('/abs-escape.txt', 'ESCAPED_ABS_PATH')
+          z.close()
+          import subprocess
+          print(subprocess.run(['unzip','-l','/tmp/evil.zip'],capture_output=True,text=True).stdout)
+          EOF
+      - name: upload crafted zip as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: g4-zipslip-artifact
+          path: /tmp/evil.zip
+      - name: download + extract artifact (same run)
+        uses: actions/download-artifact@v4
+        with:
+          name: g4-zipslip-artifact
+          path: /tmp/dl
+      - name: verify extraction did NOT escape
+        run: |
+          E=/tmp/zipslip.txt
+          : > "$E"
+          echo "workspace: $GITHUB_WORKSPACE" | tee -a "$E"
+          echo "--- extracted tree under /tmp/dl ---" | tee -a "$E"
+          find /tmp/dl -maxdepth 4 -type f 2>/dev/null | tee -a "$E"
+          echo "--- checks ---" | tee -a "$E"
+          for f in "$HOME/escape-root.txt" /escape-root.txt "$HOME/escape-sub.txt" "$GITHUB_WORKSPACE/../escape-root.txt" /abs-escape.txt /escape-sub.txt; do
+            if [ -e "$f" ]; then echo "ESCAPE PRESENT: $f" | tee -a "$E"; else echo "no escape at: $f" | tee -a "$E"; fi
+          done
+          find "$HOME" /tmp -maxdepth 2 -name 'escape-*' 2>/dev/null | tee -a "$E"
+          cp "$E" /tmp/zipslip-final.txt
+      - name: artifact name traversal attempt (CVE-2024-42471 family)
+        id: nametest
+        continue-on-error: true
+        run: |
+          echo "probe: upload-artifact with artifact name containing '..' path traversal"
+      - name: upload with traversal-ish name
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        id: upname
+        with:
+          name: g4../name-traversal-probe
+          path: /tmp/evil.zip
+      - name: report name traversal result
+        run: |
+          echo "upload-artifact name 'g4../name-traversal-probe' exit-code/outcome: ${{ steps.upname.outcome }}"
+          echo "steps.upname.conclusion: ${{ steps.upname.conclusion }}"
+      - name: upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: g4-zipslip-evidence
+          path: /tmp/zipslip-final.txt
