@@ -20,3 +20,9 @@
 
 ## c7 camo direct probe target
 ![camo-target](https://camo.githubusercontent.com/test)
+
+## c8 my pages svg through camo
+![pages-svg](https://darkeydel.github.io/x.svg)
+
+## c9 my pages html through camo
+![pages-html](https://darkeydel.github.io/camo-target.html)
