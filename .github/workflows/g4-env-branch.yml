@@ -31,19 +31,19 @@ jobs:
             curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=env-branch-probe-aud" -o /tmp/oidc-envbranch.json
           fi
           python3 - "$E" <<'EOF'
-import json,sys,base64
-E=sys.argv[1]
-try:
-    obj=json.load(open('/tmp/oidc-envbranch.json'))
-except Exception as ex:
-    open(E,'a').write('OIDC fetch raw: '+repr(ex)+'\n'); raise SystemExit
-if 'value' not in obj:
-    open(E,'a').write('OIDC fetch raw: '+open('/tmp/oidc-envbranch.json').read()[:200]+'\n')
-else:
-    t=obj['value']; h,p,s=t.split('.'); p+='='*(-len(p)%4)
-    cl=json.loads(base64.urlsafe_b64decode(p))
-    open(E,'a').write('OIDC sub: %s\nOIDC aud: %s\nOIDC repository: %s\n' % (cl.get('sub'),cl.get('aud'),cl.get('repository')))
-EOF
+          import json,sys,base64
+          E=sys.argv[1]
+          try:
+              obj=json.load(open("/tmp/oidc-envbranch.json"))
+          except Exception as ex:
+              open(E,'a').write('OIDC fetch raw: '+repr(ex)+'\n'); raise SystemExit
+          if 'value' not in obj:
+              open(E,'a').write('OIDC fetch raw: '+open('/tmp/oidc-envbranch.json').read()[:200]+'\n')
+          else:
+              t=obj['value']; h,p,s=t.split('.'); p+='='*(-len(p)%4)
+              cl=json.loads(base64.urlsafe_b64decode(p))
+              open(E,'a').write('OIDC sub: %s\nOIDC aud: %s\nOIDC repository: %s\n' % (cl.get('sub'),cl.get('aud'),cl.get('repository')))
+          EOF
           cp "$E" /tmp/envbranch-final.txt
       - name: upload evidence
         uses: actions/upload-artifact@v4
